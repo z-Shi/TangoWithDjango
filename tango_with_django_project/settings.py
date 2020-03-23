@@ -28,7 +28,7 @@ SECRET_KEY = '(52i(af1q&_8_mzhh7fxw=(4vra!k-vk-h%^1u%qu(*(js-pou'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['zshi.pythonanywhere.com']
 
 
 # Application definition
@@ -135,6 +135,8 @@ USE_TZ = True
 STATICFILES_DIRS = [STATIC_DIR, ]
 
 STATIC_URL = '/static/'
+
+STATIC_ROOT = os.path.join(BASE_DIR, 'assets')
 
 # Media Files (For Dynamic Media Files ltr.)
 
