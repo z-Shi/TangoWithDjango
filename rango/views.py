@@ -110,8 +110,8 @@ def register(request):
         user_form = UserForm()
         profile_form = UserProfileForm()
 
-        return render(request, 'rango/register.html',
-                      context={'user_form': user_form, 'profile_form': profile_form, 'registered': registered})
+    return render(request, 'rango/register.html',
+                  context={'user_form': user_form, 'profile_form': profile_form, 'registered': registered})
 
 
 def user_login(request):
