@@ -7,11 +7,17 @@
 
 {% block body_block %}
     <h1>Rango says...</h1>
+
     <div>
         here is the about page. <br />
     </div>
+
     <div>
         <img src="{% static 'images/rango.jpg' %}" alt="Picture of Rango" height="400px" width="600px"/>
         <img src="{{ MEDIA_URL }}cat.jpg" alt="Picture of a Cat" height="400px" width="350px" />
+    </div>
+
+    <div>
+        <p>Visits: {{ visits }}</p>
     </div>
 {% endblock %}
