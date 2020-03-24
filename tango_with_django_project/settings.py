@@ -28,7 +28,7 @@ SECRET_KEY = '(52i(af1q&_8_mzhh7fxw=(4vra!k-vk-h%^1u%qu(*(js-pou'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['zshi.pythonanywhere.com']
+ALLOWED_HOSTS = ['zshi.pythonanywhere.com', 'localhost']
 
 
 # Application definition
@@ -40,7 +40,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rango'
+    'rango',
+    'registration',
 ]
 
 MIDDLEWARE = [
@@ -144,5 +145,8 @@ MEDIA_ROOT = MEDIA_DIR
 MEDIA_URL = '/media/'
 
 
-# Login Page
-LOGIN_URL = 'rango:login'
+# Django Registration Redux
+REGISTRATION_OPEN = True
+REGISTRATION_AUTO_LOGIN = True
+LOGIN_REDIRECT_URL = 'rango:index'
+LOGIN_URL = 'auth_login'
