@@ -13,5 +13,5 @@ Hi, as you can probably tell, this is my personal implementation of the Tango w/
 - [x] Chapter 9 (23/03/20)
 - [x] Chapter 10 (23/03/20)
 - [x] Chapter 11 (24/03/20)
-- [x] Chapter 12 (26/03/20) - Improvements to be Made!
+- [x] Chapter 12 (26/03/20) 
 - [ ] Chapter 13 ()
