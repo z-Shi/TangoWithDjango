@@ -3,6 +3,7 @@ from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from rango.models import Category, Page
 from rango.forms import CategoryForm, PageForm
+from rango.bing_search import run_query
 from datetime import datetime
 
 
@@ -112,3 +113,18 @@ def visitor_cookie_handler(request):
         request.session['last_visit'] = last_visit_cookie
 
     request.session['visits'] = visits
+
+
+def search(request):
+    result_list = []
+    context_dict = {}
+
+    if request.method == 'POST':
+        query = request.POST['query'].strip()
+        if query:
+            result_list = run_query(query)
+            context_dict['query'] = query
+
+    context_dict['result_list'] = result_list
+
+    return render(request, 'rango/search.html', context=context_dict)
