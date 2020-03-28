@@ -128,3 +128,19 @@ def search(request):
     context_dict['result_list'] = result_list
 
     return render(request, 'rango/search.html', context=context_dict)
+
+
+def goto_url(request):
+    page_id = None
+
+    if request.method == 'GET':
+        page_id = request.GET.get('page_id')
+
+    try:
+        page = Page.objects.get(id=page_id)
+        page.views = page.views + 1
+        page.save()
+
+        return redirect(page.url)
+    except Page.DoesNotExist:
+        print("Page does not Exist! ## FIX THIS")

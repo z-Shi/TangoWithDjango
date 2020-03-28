@@ -27,7 +27,12 @@
                                 <ul class="list-group">
                                     {% for page in pages %}
                                         <li class="list-group-item">
-                                            <a href="{{ page.url }}">{{ page.title }}</a>
+                                            <a href="{% url 'rango:goto' %}?page_id={{page.id}}">{{ page.title }}</a>
+                                            {% if page.views == 1 %}
+                                                Viewed Once
+                                            {% else %}
+                                                Viewed {{ page.views }} times
+                                            {% endif %}
                                         </li>
                                     {% endfor %}
                                 </ul>
