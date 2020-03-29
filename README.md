@@ -16,5 +16,5 @@ Hi, as you can probably tell, this is my personal implementation of the Tango w/
 - [x] Chapter 12 (26/03/20) 
 - [x] Chapter 13 (28/03/20)
 - [x] Chapter 14 (29/03/20)
-- [x] Chapter 15 (29/03/20) -- minor adjustments to make
-- [ ] Chapter 16 ()
+- [x] Chapter 15 (29/03/20)
+- [x] Chapter 16 (29/03/20)
