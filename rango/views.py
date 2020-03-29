@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 from rango.models import Category, Page
-from rango.forms import CategoryForm, PageForm
+from rango.forms import CategoryForm, PageForm, UserProfileForm
 from rango.bing_search import run_query
 from datetime import datetime
 
@@ -154,3 +154,12 @@ def goto_url(request):
         return redirect(page.url)
     except Page.DoesNotExist:
         print("Page does not Exist! ## FIX THIS")
+
+
+def register_profile(request):
+    form = UserProfileForm()
+    return render(request, 'rango/profile_registration.html', {'form': form})
+
+
+def display_profile(request):
+
