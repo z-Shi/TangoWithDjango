@@ -21,7 +21,7 @@
                 <img src="{% static 'images/people.jpg' %}" width="300" height="300" alt="blank profile picture"/>
             {% endif %}
 
-            <div>
+            <div style="margin-left:30px;">
                 {% if selected_user == user %}
                     <form method="post" action="." enctype="multipart/form-data">
                         {% csrf_token %}
