@@ -52,10 +52,16 @@
         <div class="container-fluid">
             <div class="row">
                 <nav class="col-md-2 d-none d-md-block bg-light sidebar">
-                    <div class="sidebar-sticky">
-                    {% block sidebar_block %}
-                        {% get_category_list category %}
-                    {% endblock %}
+                    <div class="w-75 ml-3">
+                        <input type="search"
+                            id="search-input"
+                            class="form-control ds-input"
+                            placeholder="Search..." />
+                    </div>
+                    <div class="sidebar-sticky" id="categories-listing">
+                        {% block sidebar_block %}
+                            {% get_category_list category %}
+                        {% endblock %}
                     </div>
                 </nav>
 
@@ -76,6 +82,7 @@
         <!-- Placed at the end of the document so the pages load faster -->
         <script src="{% static 'js/jquery-3.3.1.min.js' %}" crossorigin="anonymous"></script>
         <script src="{% static 'js/rango-jquery.js' %}" crossorigin="anonymous"></script>
+        <script src="{% static 'js/rango-ajax.js' %}" crossorigin="anonymous"></script>
         <script>window.jQuery || document.write('<script src="https://getbootstrap.com/docs/4.2/assets/js/vendor/jquery-slim.min.js"><\/script>')</script><script src="https://getbootstrap.com/docs/4.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-zDnhMsjVZfS3hiP7oCBRmfjkQC4fzxVxFhBx8Hkz2aZX8gEvA/jsP3eXRCvzTofP" crossorigin="anonymous"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.9.0/feather.min.js"></script>
         <script src="https://getbootstrap.com/docs/4.2/examples/dashboard/dashboard.js"></script>
