@@ -5,7 +5,7 @@ import requests
 def read_bing_key():
     bing_api_key = None
     try:
-        with open('bing.key', 'r') as f:
+        with open('/home/zshi2/TangoWithDjango/bing.key', 'r') as f:
             bing_api_key = f.readline().strip()
     except:
         try:
@@ -22,7 +22,7 @@ def read_bing_key():
 
 def run_query(search_terms):
     bing_key = read_bing_key()
-    search_url = 'https://rango-bing-search-res.cognitiveservices.azure.com/bing/v7.0/search'
+    search_url = 'https://api.cognitive.microsoft.com/bing/v7.0/search'
     headers = {'Ocp-Apim-Subscription-Key': bing_key}
     params = {'q': search_terms, 'textDecorations': True, 'textFormat': 'HTML'}
 
