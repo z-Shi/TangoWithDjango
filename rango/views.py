@@ -1,4 +1,5 @@
 from django.utils.decorators import method_decorator
+from django.utils import timezone
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
@@ -166,6 +167,7 @@ class GotoUrlView(View):
             return redirect(reverse('rango:index'))
 
         page.views = page.views + 1
+        page.last_visit = timezone.now()
         page.save()
 
         return redirect(page.url)
