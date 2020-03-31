@@ -42,7 +42,7 @@
                                             <li class="list-group-item">
                                                 <a href="{% url 'rango:goto' %}?page_id={{page.id}}">{{ page.title }}</a>
                                                 <span style="float:right; font-weight:bold;">
-                                                    {% if page.views > 1 %}
+                                                    {% if page.views == 1 %}
                                                         ({{ page.views }} view)
                                                     {% else %}
                                                         ({{ page.views }} views)
