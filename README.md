@@ -6,8 +6,8 @@ Hi, as you can probably tell, this is my personal implementation of the Tango w/
 # **Deployments**
 Due to the way the course was set up, I had to split up my code into two versions - one covering the mandatory content, with the other storing the completed version. Consequently, I deployed each version to Python Anywhere separately:
 
-*[Mandatory Content](https://zshi.pythonanywhere.com/rango/)
-*[Completed Book](https://zshi2.pythonanywhere.com/rango/)
+* [Mandatory Content](https://zshi.pythonanywhere.com/rango/)
+* [Completed Book](https://zshi2.pythonanywhere.com/rango/)
 
 # **Timeline**
 - [x] Chapter 3 (03/03/20)
