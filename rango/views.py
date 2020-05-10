@@ -8,7 +8,7 @@ from django.contrib.auth.models import User
 from django.http import HttpResponse
 from rango.models import Category, Page, UserProfile
 from rango.forms import CategoryForm, PageForm, UserProfileForm
-from rango.bing_search import run_query
+from rango.bing_search import BingSearchExternal, BingSearchInternal
 from datetime import datetime
 
 
@@ -38,6 +38,7 @@ class AboutView(View):
 class ShowCategoryView(View):
     context_dict = {}
     result_list = []
+    search = BingSearchExternal()
 
     def store_data(self, category_name_slug):
         try:
@@ -61,9 +62,13 @@ class ShowCategoryView(View):
         self.store_data(category_name_slug)
 
         query = request.POST['query'].strip()
+        internal = request.POST['query'].strip()
+
+        if internal:
+            self.search = BingSearchInternal()
 
         if query:
-            result_list = run_query(query)
+            result_list = self.search.run_query(query)
             self.context_dict['query'] = query
             self.context_dict['result_list'] = result_list
 
@@ -84,9 +89,9 @@ class AddCategoryView(View):
             form.save(commit=True)
             return redirect(reverse('rango:index'))
         else:
-            print(form.errors)
+            errors = form.errors
 
-        return render(request, 'rango/add_category.html', {'form': form})
+        return render(request, 'rango/add_category.html', {'form': form, 'errors': errors})
 
 
 class AddPageView(View):
@@ -125,8 +130,9 @@ class AddPageView(View):
 
                 return redirect(reverse('rango:show_category', kwargs={'category_name_slug': category_name_slug}))
         else:
-            print(self.form.errors)
+            # print(self.form.errors)
             self.context_dict['form'] = self.form
+            self.context_dict['errors'] = self.form.errors
             return render(request, 'rango/add_page.html', context=self.context_dict)
 
 
@@ -134,27 +140,6 @@ class RestrictedView(View):
     @method_decorator(login_required)
     def get(self, request):
         return render(request, 'rango/restricted.html')
-
-
-def get_server_side_cookie(request, cookie, default_val=None):
-    val = request.session.get(cookie)
-    if not val:
-        val = default_val
-    return val
-
-
-def visitor_cookie_handler(request):
-    visits = int(get_server_side_cookie(request, 'visits', '1'))
-    last_visit_cookie = get_server_side_cookie(request, 'last_visit', str(datetime.now()))
-    last_visit_time = datetime.strptime(last_visit_cookie[:-7], '%Y-%m-%d %H:%M:%S')
-
-    if (datetime.now() - last_visit_time).days > 0:
-        visits = visits + 1
-        request.session['last_visit'] = str(datetime.now())
-    else:
-        request.session['last_visit'] = last_visit_cookie
-
-    request.session['visits'] = visits
 
 
 class GotoUrlView(View):
@@ -280,19 +265,6 @@ class CategorySuggestionView(View):
         return render(request, 'rango/categories.html', {'categories': category_list})
 
 
-def get_category_list(max_results=0, starts_with=''):
-    category_list = []
-
-    if starts_with:
-        category_list = Category.objects.filter(name__istartswith=starts_with)
-
-    if max_results > 0:
-        if len(category_list) > max_results:
-            category_list = category_list[:max_results]
-
-    return category_list
-
-
 class SearchAddPageView(View):
     @method_decorator(login_required)
     def get(self, request):
@@ -307,7 +279,42 @@ class SearchAddPageView(View):
         except ValueError:
             return HttpResponse('CategoryID was invalid')
 
-        page = Page.objects.get_or_create(category=category, title=title, url=url)
+        Page.objects.get_or_create(category=category, title=title, url=url)
         pages = Page.objects.filter(category=category).order_by('-views')
 
         return render(request, 'rango/list_pages.html', {'pages': pages})
+
+
+# Helper Methods
+def get_server_side_cookie(request, cookie, default_val=None):
+    val = request.session.get(cookie)
+    if not val:
+        val = default_val
+    return val
+
+
+def visitor_cookie_handler(request):
+    visits = int(get_server_side_cookie(request, 'visits', '1'))
+    last_visit_cookie = get_server_side_cookie(request, 'last_visit', str(datetime.now()))
+    last_visit_time = datetime.strptime(last_visit_cookie[:-7], '%Y-%m-%d %H:%M:%S')
+
+    if (datetime.now() - last_visit_time).days > 0:
+        visits = visits + 1
+        request.session['last_visit'] = str(datetime.now())
+    else:
+        request.session['last_visit'] = last_visit_cookie
+
+    request.session['visits'] = visits
+
+
+def get_category_list(max_results=0, starts_with=''):
+    category_list = []
+
+    if starts_with:
+        category_list = Category.objects.filter(name__istartswith=starts_with)
+
+    if max_results > 0:
+        if len(category_list) > max_results:
+            category_list = category_list[:max_results]
+
+    return category_list
