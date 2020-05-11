@@ -54,7 +54,7 @@ class BingSearchExternal(BingSearch):
 class BingSearchInternal(BingSearch):
 
     def run_query(self, search_terms):
-        return [{'title': 'Cookies', 'link': 'https://www.google.co.uk', 'summary': 'Cookies...'}]
+        return [{'title': 'Cookies', 'link': 'https://www.bbcgoodfood.com/recipes/collection/cookie', 'summary': 'Cookies...'}]
 
 
 def main():

@@ -62,7 +62,7 @@ class ShowCategoryView(View):
         self.store_data(category_name_slug)
 
         query = request.POST['query'].strip()
-        internal = request.POST['query'].strip()
+        internal = request.POST.get('internal', False)
 
         if internal:
             self.search = BingSearchInternal()

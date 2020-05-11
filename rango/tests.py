@@ -1,8 +1,11 @@
+from unittest.mock import patch, Mock
+
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.utils import timezone
 from django.contrib.auth.models import User
 
+from rango.bing_search import BingSearchExternal
 from rango.models import Category, Page
 
 
@@ -18,7 +21,6 @@ class LoginTestCase(TestCase):
 
 
 class LoggedOutTestCase(TestCase):
-
     pass  # simply to have a logged out test case to differentiate and inherit TestCase as expected
 
 
@@ -116,7 +118,7 @@ class AboutViewTests(LoggedOutTestCase):
         self.assertEquals(visits, 1)
 
 
-class ShowCategoryViewTests(LoggedOutTestCase):
+class ShowCategoryViewTestsUsingStub(LoggedOutTestCase):
 
     def test_category_no_pages(self):
         category = add_category("Random Category", 0, 0)
@@ -151,7 +153,7 @@ class ShowCategoryViewTests(LoggedOutTestCase):
 
         self.assertRedirects(response, '/accounts/login/?next=/rango/category/another-category/')
 
-    def test_when_logged_in(self):
+    def test_with_stubbed_api_call(self):
         category = add_category("Another Category", 0, 0)
         query = "some query"
         data = {'query': query, 'internal': True}
@@ -168,9 +170,33 @@ class ShowCategoryViewTests(LoggedOutTestCase):
         results = response.context['result_list']
 
         self.assertEquals(response.status_code, 200)
-        self.assertContains(response, 'Another Category')
         self.assertEquals(len(results), 1)
+        self.assertContains(response, 'Another Category')
+        self.assertContains(response, 'https://www.bbcgoodfood.com/recipes/collection/cookie')
         self.assertContains(response, 'Cookies')
+
+
+class ShowCategoryViewTestsUsingMock(LoginTestCase):
+
+    @patch('rango.views.ShowCategoryView.search.run_query')
+    def test_with_mock_api_call(self, mock_api_call):
+        mock_api_call.return_value = Mock()
+        mock_api_call.return_value = [{'title': 'GitHub', 'link': 'https://github.com/', 'summary': 'Remote Code'},
+                                      {'title': 'Stack Overflow', 'link': 'https://stackoverflow.com/',
+                                       'summary': 'Solutions for Stupid Errors'}]
+
+        category = add_category("Another Category", 0, 0)
+        query = "some query"
+        data = {'query': query}
+
+        response = self.client.post(reverse('rango:show_category', kwargs={'category_name_slug': category.slug}),
+                                    data=data)
+        results = response.context['result_list']
+
+        self.assertEquals(response.status_code, 200)
+        self.assertEquals(len(results), 2)
+        self.assertContains(response, 'https://github.com/')
+        self.assertContains(response, 'https://stackoverflow.com/')
 
 
 class AddCategoryViewTests(LoginTestCase):
