@@ -1,12 +1,29 @@
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, MagicMock, PropertyMock
 
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.utils import timezone
 from django.contrib.auth.models import User
 
-from rango.bing_search import BingSearchExternal
 from rango.models import Category, Page
+
+
+# Helper Functions
+def add_category(name, views=0, likes=0):
+    category = Category.objects.get_or_create(name=name)[0]
+    category.views = views
+    category.likes = likes
+    category.save()
+
+    return category
+
+
+def add_page(category, title, url):
+    return Page.objects.get_or_create(category=category, title=title, url=url)[0]
+
+
+def side_effect_function(query):
+    return [{'title': 'GitHub', 'link': 'https://github.com/', 'summary': 'Remote Code'}]
 
 
 # Login TestCase
@@ -178,6 +195,20 @@ class ShowCategoryViewTestsUsingStub(LoggedOutTestCase):
 
 class ShowCategoryViewTestsUsingMock(LoginTestCase):
 
+    @patch('rango.views.ShowCategoryView.search.run_query', side_effect=side_effect_function)
+    def test_with_side_effect_api_call(self, mock_api_call):
+        category = add_category("Another Category", 0, 0)
+        query = "some query"
+        data = {'query': query}
+
+        response = self.client.post(reverse('rango:show_category', kwargs={'category_name_slug': category.slug}),
+                                    data=data)
+        results = response.context['result_list']
+
+        self.assertEquals(response.status_code, 200)
+        self.assertEquals(len(results), 1)
+        self.assertContains(response, 'https://github.com/')
+
     @patch('rango.views.ShowCategoryView.search.run_query')
     def test_with_mock_api_call(self, mock_api_call):
         mock_api_call.return_value = Mock()
@@ -273,16 +304,7 @@ class GotoUrlViewTests(TestCase):
 
         self.assertRedirects(response, url, fetch_redirect_response=False)
 
+    def test_redirects_for_no_page(self):
+        response = self.client.get(reverse('rango:goto'), {'page_id': 7})
 
-# Helper Functions
-def add_category(name, views=0, likes=0):
-    category = Category.objects.get_or_create(name=name)[0]
-    category.views = views
-    category.likes = likes
-    category.save()
-
-    return category
-
-
-def add_page(category, title, url):
-    return Page.objects.get_or_create(category=category, title=title, url=url)[0]
+        self.assertRedirects(response, reverse('rango:index'))
