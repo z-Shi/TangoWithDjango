@@ -1,71 +1,96 @@
 from unittest.mock import patch, Mock, MagicMock, PropertyMock
 
+import factory
+
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.utils import timezone
 from django.contrib.auth.models import User
+from faker import Factory
 
+from rango.bing_search import BingSearchInternal
 from rango.models import Category, Page
 
 
-# Helper Functions
-def add_category(name, views=0, likes=0):
-    category = Category.objects.get_or_create(name=name)[0]
-    category.views = views
-    category.likes = likes
-    category.save()
+# Constants
+NO_CATEGORIES_MESSAGE = 'There are no categories present.'
+NO_PAGES_MESSAGE = 'There are no pages present.'
+ENTER_CATEGORY_MESSAGE = 'enter the category name'
+ENTER_PAGE_TITLE_MESSAGE = 'enter the title of the page'
+ENTER_PAGE_URL_MESSAGE = 'enter the URL of the page'
 
-    return category
-
-
-def add_page(category, title, url):
-    return Page.objects.get_or_create(category=category, title=title, url=url)[0]
+# Factories for Faking
+faker = Factory.create()
 
 
+class CategoryFactory(factory.DjangoModelFactory):
+    class Meta:
+        model = Category
+
+    name = factory.LazyAttribute(lambda _: faker.word())
+    views = faker.random_int(min=0, max=100, step=1)
+    likes = faker.random_int(min=0, max=100, step=1)
+
+
+class PageFactory(factory.DjangoModelFactory):
+    class Meta:
+        model = Page
+
+    category = factory.SubFactory(CategoryFactory)
+    title = " ".join(faker.words(nb=2, unique=True))
+    url = faker.url()
+
+
+# Side Effect Function
 def side_effect_function(query):
-    return [{'title': 'GitHub', 'link': 'https://github.com/', 'summary': 'Remote Code'}]
+    return [{'title': 'GitHub', 'link': 'https://www.github.com', 'summary': 'Remote Code'}]
 
 
 # Login TestCase
-class LoginTestCase(TestCase):
+class LoggedInTestCase(TestCase):
 
     def setUp(self):
-        user = User.objects.create(username='test')
-        user.set_password('super_str0ng!')
+        username = faker.profile()['username']
+        password = faker.password()
+
+        user = User.objects.create(username=username)
+        user.set_password(password)
         user.save()
 
-        self.client.login(username='test', password='super_str0ng!')
+        self.client.login(username=username, password=password)
 
 
 class LoggedOutTestCase(TestCase):
-    pass  # simply to have a logged out test case to differentiate and inherit TestCase as expected
+    pass
 
 
 # Test Cases
-class CategoryTests(LoggedOutTestCase):
+class CategoryModelTests(LoggedOutTestCase):
 
     def test_views_positive(self):
-        category = add_category("test", -1)
+        category = CategoryFactory(views=-1)
 
         self.assertTrue(category.views >= 0)
 
     def test_slug_creation(self):
-        category = add_category("Brilliant Work")
+        words = faker.words(nb=2, unique=True)
 
-        self.assertEqual(category.slug, "brilliant-work")
+        category = CategoryFactory(name=" ".join(words))
+
+        self.assertEqual(category.slug, "-".join(words).lower())
 
 
-class PageTests(LoggedOutTestCase):
+class PageModelTests(LoggedOutTestCase):
 
     def test_last_visit(self):
-        category = add_category('Java', 99, 99)
-        page = add_page(category, 'Ultimate Java', 'https://codewithmosh.com/p/the-ultimate-java-mastery-series')
+        category = CategoryFactory()
+        page = PageFactory(category=category)
 
         self.assertTrue(timezone.now() >= page.last_visit)
 
     def test_last_visit_updated_by_goto(self):
-        category = add_category('Haskell', 50, 30)
-        page = add_page(category, 'Haskell for Dummies', 'https://www.snoyman.com/blog/2016/11/haskell-for-dummies')
+        category = CategoryFactory()
+        page = PageFactory(category=category)
         creation_date = page.last_visit
 
         self.client.get(reverse('rango:goto'), {'page_id': page.id})
@@ -81,48 +106,46 @@ class IndexViewTests(LoggedOutTestCase):
         response = self.client.get(reverse('rango:index'))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'There are no categories present.')
+        self.assertContains(response, NO_CATEGORIES_MESSAGE)
+        self.assertContains(response, NO_PAGES_MESSAGE)
         self.assertQuerysetEqual(response.context['categories'], [])
-        self.assertContains(response, 'There are no pages present.')
         self.assertQuerysetEqual(response.context['pages'], [])
 
     def test_categories_no_pages(self):
-        add_category('Python', 1, 1)
-        add_category('C++', 1, 1)
-        add_category('Erlang', 1, 1)
+        categories = CategoryFactory.create_batch(3)
 
         response = self.client.get(reverse('rango:index'))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Python')
-        self.assertContains(response, 'C++')
-        self.assertContains(response, 'Erlang')
 
-        categories = len(response.context['categories'])
-        self.assertEqual(categories, 3)
+        for category in categories:
+            self.assertContains(response, category.name)
+
+        num_categories = len(response.context['categories'])
+        self.assertEqual(num_categories, 3)
 
     def test_pages_and_categories(self):
-        shield = add_category('SHIELD', 99, 99)
-        hydra = add_category('HYDRA', 50, 50)
+        categories = CategoryFactory.create_batch(2)
+        pages = []
 
-        add_page(shield, 'Quake', 'https://marvelcinematicuniverse.fandom.com/wiki/Quake')
-        add_page(hydra, 'Ward', 'https://marvelcinematicuniverse.fandom.com/wiki/Grant_Ward')
+        for category in categories:
+            pages.append(PageFactory(category=category))
 
         response = self.client.get(reverse('rango:index'))
 
         self.assertEqual(response.status_code, 200)
 
-        self.assertContains(response, 'SHIELD')
-        self.assertContains(response, 'HYDRA')
+        for category in categories:
+            self.assertContains(response, category.name)
 
-        categories = len(response.context['categories'])
-        self.assertEqual(categories, 2)
+        num_categories = len(response.context['categories'])
+        self.assertEqual(num_categories, 2)
 
-        self.assertContains(response, 'Quake')
-        self.assertContains(response, 'Ward')
+        for page in pages:
+            self.assertContains(response, page.title)
 
-        pages = len(response.context['pages'])
-        self.assertEqual(pages, 2)
+        num_pages = len(response.context['pages'])
+        self.assertEqual(num_pages, 2)
 
 
 class AboutViewTests(LoggedOutTestCase):
@@ -130,57 +153,60 @@ class AboutViewTests(LoggedOutTestCase):
     def test_visited(self):
         response = self.client.get(reverse('rango:about'))
 
-        visits = response.context['visits']
+        num_visits = response.context['visits']
 
-        self.assertEquals(visits, 1)
+        self.assertEquals(num_visits, 1)
 
 
 class ShowCategoryViewTestsUsingStub(LoggedOutTestCase):
 
     def test_category_no_pages(self):
-        category = add_category("Random Category", 0, 0)
+        category = CategoryFactory()
 
         response = self.client.get(reverse('rango:show_category', kwargs={'category_name_slug': category.slug}))
 
         self.assertEquals(response.status_code, 200)
-        self.assertContains(response, 'Random Category')
-        self.assertContains(response, 'There are no pages present.')
+        self.assertContains(response, category.name)
+        self.assertContains(response, NO_PAGES_MESSAGE)
         self.assertQuerysetEqual(response.context['pages'], [])
         self.assertQuerysetEqual(response.context['result_list'], [])
 
     def test_category_with_pages(self):
-        category = add_category("Another Category", 0, 0)
-        add_page(category, 'Some Page', 'https://www.google.co.uk')
+        category = CategoryFactory()
+        page = PageFactory(category=category)
 
         response = self.client.get(reverse('rango:show_category', kwargs={'category_name_slug': category.slug}))
-        pages = len(response.context['pages'])
+        num_pages = len(response.context['pages'])
 
         self.assertEquals(response.status_code, 200)
-        self.assertContains(response, 'Another Category')
-        self.assertContains(response, 'Some Page')
-        self.assertEquals(pages, 1)
+        self.assertEquals(num_pages, 1)
+        self.assertContains(response, category.name)
+        self.assertContains(response, page.title)
         self.assertQuerysetEqual(response.context['result_list'], [])
 
     def test_category_not_logged_in(self):
-        category = add_category("Another Category", 0, 0)
-        query = "cookies"
+        category = CategoryFactory()
+        query = faker.word()
 
         response = self.client.post(reverse('rango:show_category', kwargs={'category_name_slug': category.slug}),
                                     data={'query': query})
 
-        self.assertRedirects(response, '/accounts/login/?next=/rango/category/another-category/')
+        self.assertRedirects(response, '/accounts/login/?next=/rango/category/' + category.slug + '/')
 
     def test_with_stubbed_api_call(self):
-        category = add_category("Another Category", 0, 0)
-        query = "some query"
+        category = CategoryFactory()
+        query = faker.word()
         data = {'query': query, 'internal': True}
 
-        user = User.objects.create(username='test')
-        user.set_password('super_str0ng!')
+        username = faker.profile()['username']
+        password = faker.password()
+
+        user = User.objects.create(username=username)
+        user.set_password(password)
         user.save()
 
         client = Client()
-        client.login(username='test', password='super_str0ng!')
+        client.login(username=username, password=password)
 
         response = client.post(reverse('rango:show_category', kwargs={'category_name_slug': category.slug}),
                                data=data)
@@ -188,35 +214,38 @@ class ShowCategoryViewTestsUsingStub(LoggedOutTestCase):
 
         self.assertEquals(response.status_code, 200)
         self.assertEquals(len(results), 1)
-        self.assertContains(response, 'Another Category')
-        self.assertContains(response, 'https://www.bbcgoodfood.com/recipes/collection/cookie')
-        self.assertContains(response, 'Cookies')
+        self.assertContains(response, category.name)
+
+        for value in BingSearchInternal().run_query(query)[0].values():
+            self.assertContains(response, value)
 
 
-class ShowCategoryViewTestsUsingMock(LoginTestCase):
+class ShowCategoryViewTestsUsingMock(LoggedInTestCase):
 
     @patch('rango.views.ShowCategoryView.search.run_query', side_effect=side_effect_function)
-    def test_with_side_effect_api_call(self, mock_api_call):
-        category = add_category("Another Category", 0, 0)
-        query = "some query"
+    def test_with_side_effect_api_call(self, mock_method):
+        category = CategoryFactory()
+        query = " ".join(faker.words(nb=2, unique=True))
         data = {'query': query}
 
         response = self.client.post(reverse('rango:show_category', kwargs={'category_name_slug': category.slug}),
                                     data=data)
-        results = response.context['result_list']
 
         self.assertEquals(response.status_code, 200)
-        self.assertEquals(len(results), 1)
-        self.assertContains(response, 'https://github.com/')
+
+        for value in side_effect_function(query)[0].values():
+            self.assertContains(response, value)
 
     @patch('rango.views.ShowCategoryView.search.run_query')
     def test_with_mock_api_call(self, mock_api_call):
-        mock_api_call.return_value = Mock()
-        mock_api_call.return_value = [{'title': 'GitHub', 'link': 'https://github.com/', 'summary': 'Remote Code'},
+        mock_data = [{'title': 'GitHub', 'link': 'https://github.com/', 'summary': 'Remote Code'},
                                       {'title': 'Stack Overflow', 'link': 'https://stackoverflow.com/',
                                        'summary': 'Solutions for Stupid Errors'}]
 
-        category = add_category("Another Category", 0, 0)
+        mock_api_call.return_value = Mock()
+        mock_api_call.return_value = mock_data
+
+        category = CategoryFactory()
         query = "some query"
         data = {'query': query}
 
@@ -226,21 +255,25 @@ class ShowCategoryViewTestsUsingMock(LoginTestCase):
 
         self.assertEquals(response.status_code, 200)
         self.assertEquals(len(results), 2)
-        self.assertContains(response, 'https://github.com/')
-        self.assertContains(response, 'https://stackoverflow.com/')
+
+        for value in mock_data[0].values():
+            self.assertContains(response, value)
 
 
-class AddCategoryViewTests(LoginTestCase):
+class AddCategoryViewTests(LoggedInTestCase):
 
     def test_form_display(self):
         response = self.client.get(reverse('rango:add_category'))
 
         self.assertEquals(response.status_code, 200)
-        self.assertContains(response, 'enter the category name')
+        self.assertContains(response, ENTER_CATEGORY_MESSAGE)
 
     def test_form_valid(self):
-        response = self.client.post(reverse('rango:add_category'), {'name': 'random', 'views': 100, 'likes': 10,
-                                                                    'slug': 'random'})
+        name = faker.word()
+        response = self.client.post(reverse('rango:add_category'), {'name': name,
+                                                                    'views': faker.random_int(min=0, max=100, step=1),
+                                                                    'likes': faker.random_int(min=0, max=100, step=1),
+                                                                    'slug': name})
 
         self.assertRedirects(response, reverse('rango:index'))
 
@@ -251,32 +284,34 @@ class AddCategoryViewTests(LoginTestCase):
         self.assertIsNotNone(response.context['errors'])
 
 
-class AddPageViewTests(LoginTestCase):
+class AddPageViewTests(LoggedInTestCase):
 
     def test_form_display(self):
-        category = add_category('Random Category', 0, 0)
+        category = CategoryFactory()
         response = self.client.get(reverse('rango:add_page', kwargs={'category_name_slug': category.slug}))
 
         self.assertEquals(response.status_code, 200)
-        self.assertContains(response, 'enter the title of the page')
-        self.assertContains(response, 'enter the URL of the page')
+        self.assertContains(response, ENTER_PAGE_TITLE_MESSAGE)
+        self.assertContains(response, ENTER_PAGE_URL_MESSAGE)
 
     def test_form_valid(self):
-        category = add_category('Random Category', 0, 0)
+        category = CategoryFactory()
         response = self.client.post(reverse('rango:add_page', kwargs={'category_name_slug': category.slug}),
-                                    {'title': 'Random Page', 'url': 'https://www.google.co.uk', 'views': 0})
+                                    {'title': faker.word(),
+                                     'url': faker.url(),
+                                     'views': faker.random_int(min=0, max=100, step=1)})
 
         self.assertRedirects(response, reverse('rango:show_category', kwargs={'category_name_slug': category.slug}))
 
     def test_form_invalid(self):
-        category = add_category('Random Category', 0, 0)
+        category = CategoryFactory()
         response = self.client.post(reverse('rango:add_page', kwargs={'category_name_slug': category.slug}), {})
 
         self.assertEquals(response.status_code, 200)
         self.assertIsNotNone(response.context['errors'])
 
 
-class RestrictedViewLoggedInTest(LoginTestCase):
+class RestrictedViewLoggedInTest(LoggedInTestCase):
 
     def test_page_display(self):
         response = self.client.get(reverse('rango:restricted'))
@@ -296,15 +331,14 @@ class RestrictedViewLoggedOutTest(LoggedOutTestCase):
 class GotoUrlViewTests(TestCase):
 
     def test_redirects(self):
-        url = 'https://www.google.co.uk'
-        category = add_category('Random Category', 0, 0)
-        page = add_page(category, 'Random Page', url)
+        category = CategoryFactory()
+        page = PageFactory(category=category)
 
         response = self.client.get(reverse('rango:goto'), {'page_id': page.id})
 
-        self.assertRedirects(response, url, fetch_redirect_response=False)
+        self.assertRedirects(response, page.url, fetch_redirect_response=False)
 
     def test_redirects_for_no_page(self):
-        response = self.client.get(reverse('rango:goto'), {'page_id': 7})
+        response = self.client.get(reverse('rango:goto'), {'page_id': faker.random_int(min=0, max=100, step=1)})
 
         self.assertRedirects(response, reverse('rango:index'))
